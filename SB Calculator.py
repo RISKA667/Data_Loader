@@ -5,25 +5,14 @@ from datetime import datetime
 from scipy import stats
 import tkinter as tk
 from tkinter import filedialog
-import warnings
-warnings.filterwarnings('ignore')
 
 class VolatilityAnalyzer:
     def __init__(self, csv_path):
-        """
-        Initialise l'analyseur de volatilité
-        
-        Args:
-            csv_path (str): Chemin vers le fichier CSV à analyser
-        """
         self.csv_path = Path(csv_path)
         self.data = None
         self.results = {}
 
     def validate_timestamp(self, timestamp):
-        """
-        Valide si un timestamp en nanosecondes est dans une plage acceptable
-        """
         try:
             if not timestamp or str(timestamp).strip() == '':
                 return False
@@ -31,15 +20,13 @@ class VolatilityAnalyzer:
             timestamp_str = str(timestamp).strip()
             timestamp_val = float(timestamp_str)
             
-            # Conversion en millisecondes selon le format
-            if len(timestamp_str.split('.')[0]) >= 16:  # Format nanosecondes
-                timestamp_val = timestamp_val / 1_000_000  # nano to milli
-            elif len(timestamp_str.split('.')[0]) >= 13:  # Format microsecondes
-                timestamp_val = timestamp_val / 1_000  # micro to milli
-            elif len(timestamp_str.split('.')[0]) <= 11:  # Format secondes
-                timestamp_val *= 1_000  # seconds to milli
+            if len(timestamp_str.split('.')[0]) >= 16:
+                timestamp_val = timestamp_val / 1_000_000
+            elif len(timestamp_str.split('.')[0]) >= 13:
+                timestamp_val = timestamp_val / 1_000
+            elif len(timestamp_str.split('.')[0]) <= 11:
+                timestamp_val *= 1_000
                 
-            # Plage élargie pour accommoder les données
             min_date = pd.Timestamp('1970-01-01').value // 10**6
             max_date = pd.Timestamp('2100-01-01').value // 10**6
             
@@ -59,18 +46,15 @@ class VolatilityAnalyzer:
             if self.csv_path.stat().st_size == 0:
                 raise ValueError("Fichier vide")
             
-            # Lecture du CSV
             self.data = pd.read_csv(
                 self.csv_path,
                 header=None,
-                dtype=str
-            )
+                dtype=str)
             
             print("Traitement des données...")
             num_columns = self.data.shape[1]
             
             if num_columns == 1:
-                # Si une seule colonne, on essaie de la diviser
                 parsed_data = []
                 for _, row in self.data.iterrows():
                     try:
@@ -82,47 +66,36 @@ class VolatilityAnalyzer:
                 
                 self.data = pd.DataFrame(
                     parsed_data,
-                    columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
-                )
+                    columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             else:
-                # Le fichier est déjà en colonnes
                 self.data.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
             
-            # Conversion des types
             initial_rows = len(self.data)
             
-            # Conversion des colonnes de prix et volume
             for col in ['open', 'high', 'low', 'close', 'volume']:
                 self.data[col] = pd.to_numeric(self.data[col], errors='coerce')
-            
-            # Conversion des timestamps
-            # Division par 1M pour convertir nanosecondes en millisecondes
+
             self.data['datetime'] = pd.to_datetime(
                 pd.to_numeric(self.data['timestamp']) / 1_000_000,
-                unit='ms'
-            )
+                unit='ms')
             
             self.data = self.data.dropna()
             
-            # Validation des relations de prix
             self.data = self.data[
                 (self.data['high'] >= self.data['low']) &
                 (self.data['high'] >= self.data['open']) &
                 (self.data['high'] >= self.data['close']) &
                 (self.data['low'] <= self.data['open']) &
                 (self.data['low'] <= self.data['close']) &
-                (self.data['volume'] >= 0)
-            ]
+                (self.data['volume'] >= 0)]
             
             dropped_rows = initial_rows - len(self.data)
             
             if len(self.data) == 0:
                 raise ValueError("Aucune donnée valide après nettoyage")
             
-            # Tri chronologique
             self.data = self.data.sort_values('datetime')
             
-            # Calcul des colonnes dérivées
             self.data['returns'] = self.data['close'].pct_change()
             self.data['price_range'] = (self.data['high'] - self.data['low']) / self.data['close']
             
@@ -141,21 +114,17 @@ class VolatilityAnalyzer:
             raise Exception(f"Erreur lors du chargement des données: {str(e)}")
 
     def calculate_basic_metrics(self):
-        """Calcule les métriques de base de volatilité"""
         try:
             if len(self.data) == 0:
                 raise ValueError("Pas de données à analyser")
                 
             returns = self.data['returns'].dropna()
             
-            # Volatilité historique sur différentes fenêtres
             windows = [5, 10, 20, 30]
             volatilities = {
                 f'volatility_{w}d': returns.rolling(window=w).std() * np.sqrt(252)
-                for w in windows
-            }
+                for w in windows}
             
-            # True Range et ATR
             true_range = pd.DataFrame({
                 'hl': self.data['high'] - self.data['low'],
                 'hc': abs(self.data['high'] - self.data['close'].shift()),
@@ -165,16 +134,14 @@ class VolatilityAnalyzer:
             atr_windows = [5, 14, 30]
             atrs = {
                 f'atr_{w}': true_range.rolling(window=w, min_periods=1).mean()
-                for w in atr_windows
-            }
+                for w in atr_windows}
             
             self.results['volatility'] = {
                 'daily_volatility': returns.std() * np.sqrt(252),
                 **{k: v.iloc[-1] for k, v in volatilities.items()},
                 **{k: v.iloc[-1] for k, v in atrs.items()},
                 'max_daily_range': self.data['price_range'].max(),
-                'avg_daily_range': self.data['price_range'].mean()
-            }
+                'avg_daily_range': self.data['price_range'].mean()}
             
         except Exception as e:
             raise Exception(f"Erreur lors du calcul des métriques de base: {str(e)}")
@@ -190,37 +157,31 @@ class VolatilityAnalyzer:
             if len(returns) < 2:
                 raise ValueError("Données insuffisantes pour calculer les métriques avancées")
             
-            # Calcul du drawdown maximum
             prices = self.data['close']
             peak = prices.expanding().max()
             drawdown = (prices - peak) / peak
             max_drawdown = abs(drawdown.min())
             
-            # Calcul des VaR et CVaR pour différents niveaux de confiance
             confidence_levels = [0.99, 0.95, 0.90]
             var_metrics = {
                 f'var_{int(c*100)}': np.percentile(returns, (1-c)*100)
-                for c in confidence_levels
-            }
+                for c in confidence_levels}
             
             cvar_metrics = {
                 f'cvar_{int(c*100)}': returns[returns <= np.percentile(returns, (1-c)*100)].mean()
-                for c in confidence_levels
-            }
+                for c in confidence_levels}
             
             self.results['advanced_metrics'] = {
                 **var_metrics,
                 **cvar_metrics,
                 'max_drawdown': max_drawdown,
                 'kurtosis': stats.kurtosis(returns, nan_policy='omit'),
-                'skewness': stats.skew(returns, nan_policy='omit')
-            }
+                'skewness': stats.skew(returns, nan_policy='omit')}
             
         except Exception as e:
             raise Exception(f"Erreur lors du calcul des métriques avancées: {str(e)}")
 
     def generate_report(self):
-        """Génère un rapport détaillé d'analyse"""
         try:
             if len(self.data) == 0:
                 return "Pas de données disponibles pour générer le rapport"
@@ -229,7 +190,6 @@ class VolatilityAnalyzer:
             report.append("RAPPORT D'ANALYSE DE VOLATILITÉ")
             report.append("=" * 50)
             
-            # Informations générales
             start_date = self.data['datetime'].min()
             end_date = self.data['datetime'].max()
             duration_days = (end_date - start_date).days
@@ -241,7 +201,6 @@ class VolatilityAnalyzer:
             report.append(f"Durée: {duration_days} jours")
             report.append(f"Nombre d'observations: {len(self.data):,}")
             
-            # Prix
             report.append("\nPRIX")
             report.append("-" * 20)
             report.append(f"Premier: {self.data['close'].iloc[0]:.4f}")
@@ -251,7 +210,6 @@ class VolatilityAnalyzer:
             variation = ((self.data['close'].iloc[-1] / self.data['close'].iloc[0]) - 1) * 100
             report.append(f"Variation totale: {variation:.2f}%")
             
-            # Volume
             report.append("\nVOLUME")
             report.append("-" * 20)
             report.append(f"Volume total: {self.data['volume'].sum():.0f}")
@@ -259,7 +217,6 @@ class VolatilityAnalyzer:
             report.append(f"Volume médian: {self.data['volume'].median():.2f}")
             report.append(f"Volume max: {self.data['volume'].max():.2f}")
             
-            # Volatilité
             vol = self.results['volatility']
             report.append("\nVOLATILITÉ")
             report.append("-" * 20)
@@ -273,8 +230,7 @@ class VolatilityAnalyzer:
             
             report.append(f"Range moyen: {vol['avg_daily_range']*100:.2f}%")
             report.append(f"Range maximum: {vol['max_daily_range']*100:.2f}%")
-            
-            # Risque
+        
             adv = self.results['advanced_metrics']
             report.append("\nRISQUE")
             report.append("-" * 20)
@@ -285,14 +241,11 @@ class VolatilityAnalyzer:
             
             report.append(f"Drawdown max: {adv['max_drawdown']*100:.2f}%")
             
-            # Distribution des rendements
             returns = self.data['returns'].dropna()
             report.append("\nDISTRIBUTION DES RENDEMENTS")
             report.append("-" * 20)
             report.append(f"Rendement moyen: {returns.mean()*100:.4f}%")
             report.append(f"Rendement médian: {returns.median()*100:.4f}%")
-            report.append(f"Kurtosis: {adv['kurtosis']:.2f}")
-            report.append(f"Skewness: {adv['skewness']:.2f}")
             report.append(f"Meilleur rendement: {returns.max()*100:.2f}%")
             report.append(f"Pire rendement: {returns.min()*100:.2f}%")
             
@@ -309,7 +262,6 @@ class VolatilityAnalyzer:
             raise Exception(f"Erreur lors de la génération du rapport: {str(e)}")
         
     def analyze(self):
-        """Effectue l'analyse complète"""
         print("\nDébut de l'analyse...")
         self.load_data()
         
@@ -321,8 +273,7 @@ class VolatilityAnalyzer:
         
         print("Génération du rapport...")
         report = self.generate_report()
-        
-        # Sauvegarde du rapport
+ 
         output_path = self.csv_path.parent / f"rapport_volatilite_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(report)
@@ -332,13 +283,11 @@ class VolatilityAnalyzer:
         print(report)
 
 def select_file():
-    """Ouvre une boîte de dialogue pour sélectionner le fichier CSV"""
     root = tk.Tk()
     root.withdraw()
     file_path = filedialog.askopenfilename(
         title="Sélectionnez le fichier CSV à analyser",
-        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
-    )
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
     return file_path if file_path else None
 
 def main():
