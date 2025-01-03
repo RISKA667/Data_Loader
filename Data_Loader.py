@@ -11,7 +11,7 @@ import time
 class OHLCVFormatter:
     def __init__(self, input_dir: str, output_dir: str = None):
         self.input_dir = Path(input_dir)
-        self.output_dir = Path(output_dir) if output_dir else self.input_dir.parent / 'RESULTAT'
+        self.output_dir = Path(output_dir) if output_dir else self.input_dir.parent / 'RESULT'
         self.output_dir.mkdir(exist_ok=True)
         
     def validate_timestamp(self, timestamp: any) -> Optional[int]:
@@ -42,7 +42,6 @@ class OHLCVFormatter:
             
             if min_ts <= ts <= max_ts:
                 return int(ts)
-            
             return None
             
         except (ValueError, TypeError):
@@ -202,7 +201,7 @@ class OHLCVFormatter:
         print("Format: timestamp,open,high,low,close,volume")
 
 def main():
-    input_dir = r"" # Chemin d'accès
+    input_dir = r"" # Access Path
     
     try:
         formatter = OHLCVFormatter(input_dir)
