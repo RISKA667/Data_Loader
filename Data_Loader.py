@@ -202,7 +202,6 @@ class OHLCVFormatter:
 
 def main():
     input_dir = r"" # Access Path
-    
     try:
         formatter = OHLCVFormatter(input_dir)
         formatter.compile_files()
