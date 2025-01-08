@@ -201,7 +201,7 @@ class OHLCVFormatter:
         print("Format: timestamp,open,high,low,close,volume")
 
 def main():
-    input_dir = r"" # Access Path
+    input_dir = r"" # Folder Path
     try:
         formatter = OHLCVFormatter(input_dir)
         formatter.compile_files()
