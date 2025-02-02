@@ -1,17 +1,27 @@
 import os
+
 import zipfile
+
 import pandas as pd
+
 import numpy as np
+
 from pathlib import Path
+
 from typing import List, Optional, Tuple
+
 from tqdm import tqdm
+
 from datetime import datetime
+
 import time
 
 class OHLCVFormatter:
     def __init__(self, input_dir: str, output_dir: str = None):
         self.input_dir = Path(input_dir)
+        
         self.output_dir = Path(output_dir) if output_dir else self.input_dir.parent / 'RESULT'
+        
         self.output_dir.mkdir(exist_ok=True)
         
     def validate_timestamp(self, timestamp: any) -> Optional[int]:
@@ -158,7 +168,7 @@ class OHLCVFormatter:
         self.extract_zip_files()
          csv_files = list(self.input_dir.glob('*.csv'))
         if not csv_files:
-            print("No CSV files found!")
+            print("No CSV files found")
             return
         
         print(f"\nFound {len(csv_files)} CSV files to process")
@@ -170,7 +180,7 @@ class OHLCVFormatter:
             all_rows.extend(rows)
 
         if not all_rows:
-            print("No valid data found!")
+            print("No valid data found")
             return
 
         print("\nRemoving duplicates and sorting...")
@@ -191,17 +201,24 @@ class OHLCVFormatter:
         with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(output_csv, output_csv.name)
         
-        print(f"\nProcessing complete!")
+        print(f"\nProcessing complete")
+        
         print(f"Total rows processed: {original_count}")
+        
         print(f"Duplicates removed: {duplicate_count}")
+        
         print(f"Final rows: {len(all_rows)}")
+        
         print(f"Output CSV: {output_csv}")
+        
         print(f"Output ZIP: {output_zip}")
-        print("Timestamps en millisecondes")
-        print("Format: timestamp,open,high,low,close,volume")
+        
+        print("Timestamps in milliseconds")
+        
+        print("Format: Timestamp,Open,High,Low,Close,Volume")
 
 def main():
-    input_dir = r"" # Folder Path
+    input_dir = r"" # Folder path
     try:
         formatter = OHLCVFormatter(input_dir)
         formatter.compile_files()
