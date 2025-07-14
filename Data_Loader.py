@@ -1,27 +1,17 @@
 import os
-
 import zipfile
-
 import pandas as pd
-
 import numpy as np
-
 from pathlib import Path
-
 from typing import List, Optional, Tuple
-
 from tqdm import tqdm
-
 from datetime import datetime
-
 import time
 
 class OHLCVFormatter:
     def __init__(self, input_dir: str, output_dir: str = None):
         self.input_dir = Path(input_dir)
-        
         self.output_dir = Path(output_dir) if output_dir else self.input_dir.parent / 'RESULT'
-        
         self.output_dir.mkdir(exist_ok=True)
         
     def validate_timestamp(self, timestamp: any) -> Optional[int]:
@@ -166,7 +156,7 @@ class OHLCVFormatter:
 
     def compile_files(self):
         self.extract_zip_files()
-         csv_files = list(self.input_dir.glob('*.csv'))
+        csv_files = list(self.input_dir.glob('*.csv'))
         if not csv_files:
             print("No CSV files found")
             return
@@ -202,23 +192,16 @@ class OHLCVFormatter:
             zipf.write(output_csv, output_csv.name)
         
         print(f"\nProcessing complete")
-        
         print(f"Total rows processed: {original_count}")
-        
         print(f"Duplicates removed: {duplicate_count}")
-        
         print(f"Final rows: {len(all_rows)}")
-        
         print(f"Output CSV: {output_csv}")
-        
         print(f"Output ZIP: {output_zip}")
-        
         print("Timestamps in milliseconds")
-        
         print("Format: Timestamp,Open,High,Low,Close,Volume")
 
 def main():
-    input_dir = r"" # Folder path
+    input_dir = r"C:\"
     try:
         formatter = OHLCVFormatter(input_dir)
         formatter.compile_files()
